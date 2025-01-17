@@ -3,33 +3,21 @@
 	"build": {
 		"dockerfile": "Dockerfile",
 		"args": {
-			"USERNAME": "${localEnv:USER}"
+			"BASE_IMAGE": "temurin-21-tools-deps-jammy"
 		}
 	},
-	"remoteUser": "${localEnv:USER}",
-	"containerUser": "${localEnv:USER}",
 	"features": {
 		"ghcr.io/devcontainers/features/git:1": {},
-		"ghcr.io/devcontainers/features/common-utils": {
-			"installZsh": true,
-			"configureZshAsDefaultShell": true,
-			"installOhMyZsh": true,
-			"installOhMyZshConfig": true,
-			"upgradePackages": true,
-			"username": "${localEnv:USER}"
-		}
+		"ghcr.io/devcontainers/features/common-utils:2": {}
 	},
 	"customizations": {
 		"vscode": {
 			"extensions": [
 				"betterthantomorrow.calva"
-			],
-			"settings": {
-				"terminal.integrated.shell.linux": "/bin/bash"
-			}
+			]
 		}
 	},
-	"mounts": [
-		"source=${localEnv:HOME}/.ssh,target=/home/${localEnv:USER}/.ssh,type=bind,consistency=cached"
-	]
+	"containerEnv": {
+		"SHELL": "/usr/bin/zsh"
+	}
 }
