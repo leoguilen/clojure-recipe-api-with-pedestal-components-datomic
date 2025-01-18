@@ -12,8 +12,14 @@
  :aliases
  {:dev 
   {:extra-paths
-   ["src/dev"]}
+   ["src/dev"]
+   
+   :extra-deps
+   {com.datomic/local {:mvn/version "1.0.285"}}}
   
   :test
   {:extra-paths
-   ["src/test"]}}}
+   ["src/test"]
+   
+   :extra-deps
+   {com.datomic/local {:mvn/version "1.0.285"}}}}}
