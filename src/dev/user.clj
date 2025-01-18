@@ -1,8 +1,8 @@
 (ns user
   (:require
-   [cheffy.routes :as routes]
    [clojure.edn :as edn]
-   [io.pedestal.http :as http]))
+   [cheffy.server :as server]
+   [com.stuartsierra.component :as component]))
 
 (defonce system-ref (atom nil))
 
@@ -11,14 +11,13 @@
   (let [config (-> "src/config/cheffy/development.edn" slurp edn/read-string)]
     (reset! system-ref
             (-> config
-                (assoc ::http/routes routes/routes)
-                (http/create-server)
-                (http/start))))
+                (server/create-system)
+                (component/start))))
   :started)
 
 (defn stop-dev
   []
-  (http/stop @system-ref)
+  (component/stop @system-ref)
   :stopped)
 
 (defn restart-dev
@@ -30,4 +29,5 @@
 (comment
   (start-dev)
   (stop-dev)
-  (restart-dev))
+  (restart-dev)
+  (keys @system-ref))
