@@ -15,11 +15,13 @@
    ["src/dev"]
    
    :extra-deps
-   {com.datomic/local {:mvn/version "1.0.285"}}}
+   {com.datomic/local {:mvn/version "1.0.285"}
+    com.stuartsierra/component.repl {:mvn/version "1.0.0"}}}
   
   :test
   {:extra-paths
    ["src/test"]
    
    :extra-deps
-   {com.datomic/local {:mvn/version "1.0.285"}}}}}
+   {com.datomic/local {:mvn/version "1.0.285"}
+    com.stuartsierra/component.repl {:mvn/version "1.0.0"}}}}}

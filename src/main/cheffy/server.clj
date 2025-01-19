@@ -9,8 +9,10 @@
   [config]
   (component/system-map
    :config config
-   :databse (database/service (:database config))
-   :api-server (api-server/service (:service-map config))))
+   :database (database/service (:database config))
+   :api-server (component/using
+                (api-server/service (:service-map config))
+                [:database])))
 
 (defn -main
   [config-file]
