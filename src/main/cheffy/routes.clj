@@ -15,7 +15,7 @@
 ;; Table route spec
 (def routes
   (route/expand-routes
-   #{{:app-name :cheffy :schema :http :host "learnpedestal.com"}
+   #{{:app-name :cheffy :schema :http :host "localhost"}
      ["/recipes" :get list-recipes :route-name :list-recipes]
      ["/recipes" :post upsert-recipes :route-name :create-recipes]
      ["/recipes/:recipe-id" :put upsert-recipes :route-name :update-recipes]}))

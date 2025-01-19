@@ -27,4 +27,4 @@
   (start-dev)
   (stop-dev)
   (restart-dev)
-  (keys cr/system))
+  (:api-server cr/system))
