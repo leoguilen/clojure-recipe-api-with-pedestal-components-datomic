@@ -2,7 +2,8 @@
   (:require
    [clojure.edn :as edn]
    [cheffy.server :as server]
-   [com.stuartsierra.component.repl :as cr]))
+   [com.stuartsierra.component.repl :as cr]
+   [datomic.client.api :as d]))
 
 (defn system
   [_]
@@ -24,7 +25,16 @@
   (cr/reset))
 
 (comment
+  (d/q '[:find ?e ?id
+         :where [?e :account/account-id ?id]]
+       (d/db (-> cr/system :database :conn)))
+
   (start-dev)
   (stop-dev)
   (restart-dev)
-  (-> cr/system :api-server :service))
+  (-> cr/system :api-server :service)
+
+  (let [conn (-> cr/system :database :conn)
+        db (d/db conn)]
+    (contains? (d/pull db {:eid :account/account-id :selector '[*]}) :db/ident))
+  )
