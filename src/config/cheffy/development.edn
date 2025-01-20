@@ -1,4 +1,5 @@
-{:service-map {:io.pedestal.http/router :map-tree ;;map-tree (default) / prefix-tree / linear-search
+{:service-map {:env :dev
+               :io.pedestal.http/router :map-tree ;;map-tree (default) / prefix-tree / linear-search
                :io.pedestal.http/type :jetty
                :io.pedestal.http/join? false
                :io.pedestal.http/port 3000}

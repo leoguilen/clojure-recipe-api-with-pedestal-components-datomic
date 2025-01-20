@@ -5,11 +5,31 @@
    [io.pedestal.http :as http]
    [io.pedestal.interceptor :as interceptor]))
 
-(defn inject-system
+(defn- dev?
+  [service-map]
+  (= :dev (:env service-map)))
+
+(defn- inject-system
   [system]
   (interceptor/interceptor
    {:name ::inject-system
     :enter (fn [ctx] (update-in ctx [:request] merge system))}))
+
+(defn- create-cheffy-server [service-map]
+  (http/create-server (if (dev? service-map)
+                        (http/dev-interceptors service-map)
+                        (service-map))))
+
+(defn- cheffy-interceptors
+  [service-map sys-interceptors]
+  (let [default-interceptors (-> service-map
+                                 (http/default-interceptors)
+                                 ::http/interceptors)
+        interceptors (into [] (concat
+                               (butlast default-interceptors)
+                               sys-interceptors
+                               [(last default-interceptors)]))]
+    (assoc service-map ::http/interceptors interceptors)))
 
 (defrecord ApiServer [service-map service database]
   
@@ -19,8 +39,8 @@
     (println ";; Starting API server")
     (let [service (-> service-map
                       (assoc ::http/routes routes/routes)
-                      (update-in [::http/interceptors] conj (inject-system {:system/database database}))
-                      (http/create-server)
+                      (cheffy-interceptors [(inject-system {:system/database database})])
+                      (create-cheffy-server)
                       (http/start))]
       (assoc component :service service)))
   

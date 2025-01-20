@@ -27,4 +27,4 @@
   (start-dev)
   (stop-dev)
   (restart-dev)
-  (:api-server cr/system))
+  (-> cr/system :api-server :service))
