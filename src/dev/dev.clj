@@ -30,8 +30,8 @@
 
   (pt/response-for
    (-> cr/system :api-server :service ::http/service-fn)
-   :get
-   "/recipes")
+   :get "/recipes"
+   :headers {"Authorization" "auth|5fbf7db6271d5e0076903601"})
 
   (d/q '[:find ?e ?id
          :where [?e :account/account-id ?id]]
