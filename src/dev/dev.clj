@@ -1,9 +1,11 @@
 (ns dev
   (:require
-   [clojure.edn :as edn]
    [cheffy.server :as server]
+   [clojure.edn :as edn]
    [com.stuartsierra.component.repl :as cr]
-   [datomic.client.api :as d]))
+   [datomic.client.api :as d]
+   [io.pedestal.http :as http]
+   [io.pedestal.test :as pt]))
 
 (defn system
   [_]
@@ -25,6 +27,12 @@
   (cr/reset))
 
 (comment
+
+  (pt/response-for
+   (-> cr/system :api-server :service ::http/service-fn)
+   :get
+   "/recipes")
+
   (d/q '[:find ?e ?id
          :where [?e :account/account-id ?id]]
        (d/db (-> cr/system :database :conn)))
@@ -32,7 +40,7 @@
   (start-dev)
   (stop-dev)
   (restart-dev)
-  (-> cr/system :api-server :service)
+  (-> cr/system :api-server :service ::http/service-fn)
 
   (let [conn (-> cr/system :database :conn)
         db (d/db conn)]
