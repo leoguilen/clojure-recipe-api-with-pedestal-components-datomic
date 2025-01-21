@@ -1,7 +1,6 @@
-(ns cheffy.interceptors 
-  (:require
-    [datomic.client.api :as d]
-    [io.pedestal.interceptor :as interceptor]))
+(ns cheffy.interceptors
+  (:require [datomic.client.api :as d]
+            [io.pedestal.interceptor :as interceptor]))
 
 (def db-interceptor
   (interceptor/interceptor

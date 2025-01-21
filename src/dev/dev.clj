@@ -27,19 +27,6 @@
   []
   (cr/reset))
 
-(defn- transit-write
-  [obj]
-  (let [out (java.io.ByteArrayOutputStream.)
-        writer (transit/writer out :json)]
-    (transit/write writer obj)
-    (.toString out)))
-
-(defn- transit-read
-  [txt]
-  (let [in (java.io.ByteArrayInputStream. (.getBytes txt))
-        reader (transit/reader in :json)]
-    (transit/read reader)))
-
 (comment
   (-> cr/system :api-server :service :env)
 
