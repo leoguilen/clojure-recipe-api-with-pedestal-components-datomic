@@ -9,7 +9,7 @@
   (route/expand-routes
    #{{:app-name :cheffy ::http/scheme :http ::http/host "localhost"}
      ["/recipes" :get recipes/list-recipes :route-name :list-recipes]
-     ["/recipes" :post recipes/upsert-recipes :route-name :create-recipes]
+     ["/recipes" :post recipes/create-recipe :route-name :create-recipe]
      ["/recipes/:recipe-id" :put recipes/upsert-recipes :route-name :update-recipes]}))
 
 ;; Terse route spec

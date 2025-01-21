@@ -2,8 +2,9 @@
   (:require
    [cheffy.interceptors :as interceptors]
    [datomic.client.api :as d]
-   [ring.util.response :as rr]
-   [io.pedestal.http :as http]))
+   [io.pedestal.http :as http]
+   [io.pedestal.http.body-params :as bp]
+   [ring.util.response :as rr]))
 
 (defn- query-result->recipe
   [[{:account/keys [_favorite-recipes] :as recipe}]]
@@ -14,7 +15,7 @@
 (defn- list-recipes-response
   [request]
   (let [db (get-in request [:system/database :db])
-        account-id (get-in request [:headers "Authorization"])
+        account-id (get-in request [:headers "authorization"])
         recipe-pattern [:recipe/recipe-id
                         :recipe/prep-time
                         :recipe/display-name
@@ -56,6 +57,25 @@
   [interceptors/db-interceptor
    http/transit-body
    list-recipes-response])
+
+(defn- create-recipe-response
+  [request]
+  (let [account-id (get-in request [:headers "authorization"])
+        recipe-id (random-uuid)
+        {:keys [name public prep-time img]} (get-in request [:transit-params])
+        conn (get-in request [:system/database :conn])]
+    (d/transact conn {:tx-data [{:recipe/recipe-id recipe-id
+                                 :recipe/display-name name
+                                 :recipe/public? public
+                                 :recipe/prep-time prep-time
+                                 :recipe/image-url img
+                                 :recipe/owner [:account/account-id account-id]}]})
+    (rr/created (str "/recipes/" recipe-id) {:recipe-id recipe-id})))
+  
+(def create-recipe
+  [(bp/body-params)
+   http/transit-body
+   create-recipe-response])
 
 (defn- upsert-recipes-response
   [request]
