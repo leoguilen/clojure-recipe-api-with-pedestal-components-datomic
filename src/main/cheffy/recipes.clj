@@ -4,7 +4,8 @@
    [datomic.client.api :as d]
    [io.pedestal.http :as http]
    [io.pedestal.http.body-params :as bp]
-   [ring.util.response :as rr]))
+   [ring.util.response :as rr]
+   [io.pedestal.interceptor :as interceptor]))
 
 (def recipe-pattern
   [:recipe/recipe-id
@@ -60,64 +61,79 @@
    http/transit-body
    list-recipes-response])
 
-(defn- create-recipe-response
-  [request]
-  (let [account-id (get-in request [:headers "authorization"])
-        recipe-id (random-uuid)
-        {:keys [name public prep-time img]} (get-in request [:transit-params])
-        conn (get-in request [:system/database :conn])]
-    (d/transact conn {:tx-data [{:recipe/recipe-id recipe-id
-                                 :recipe/display-name name
-                                 :recipe/public? public
-                                 :recipe/prep-time prep-time
-                                 :recipe/image-url img
-                                 :recipe/owner [:account/account-id account-id]}]})
-    (rr/created (str "/recipes/" recipe-id) {:recipe-id recipe-id})))
-  
+(def recipe-interceptor
+  (interceptor/interceptor
+   {:name ::recipe-interceptor
+    :enter (fn [ctx]
+             (let [account-id (get-in ctx [:request :headers "authorization"])
+                   path-recipe-id (get-in ctx [:request :path-params :recipe-id])
+                   recipe-id (or (when path-recipe-id (parse-uuid path-recipe-id)) (random-uuid))
+                   {:keys [name public prep-time img]} (get-in ctx [:request :transit-params])]
+               (assoc ctx :tx-data [{:tx-data [{:recipe/recipe-id recipe-id
+                                                :recipe/display-name name
+                                                :recipe/public? public
+                                                :recipe/prep-time prep-time
+                                                :recipe/image-url img
+                                                :recipe/owner [:account/account-id account-id]}]}])))}))
+
+(def create-recipe-response-interceptor
+  (interceptor/interceptor
+   {:name ::create-recipe-response-interceptor
+    :leave (fn [ctx]
+             (let [recipe-id (-> ctx :tx-data (first) :recipe/recipe-id)]
+               (assoc ctx :response (rr/created (str "/recipes/" recipe-id) {:recipe-id recipe-id}))))}))
+
 (def create-recipe
   [(bp/body-params)
+   recipe-interceptor
+   interceptors/transact-interceptor
    http/transit-body
-   create-recipe-response])
+   create-recipe-response-interceptor])
 
-(defn- retrieve-recipe-response
-  [request]
-  (let [db (get-in request [:system/database :db])
-        recipe-id (parse-uuid (get-in request [:path-params :recipe-id]))]
-    (rr/response
-     (d/q '[:find (pull ?e pattern)
-            :in $ ?recipe-id pattern
-            :where [?e :recipe/recipe-id ?recipe-id]]
-          db recipe-id recipe-pattern))))
+(def find-recipe-by-id-interceptor
+  (interceptor/interceptor
+   {:name ::find-recipe-by-id-interceptor
+    :enter (fn [ctx]
+             (let [db (get-in ctx [:request :system/database :db])
+                   recipe-id (parse-uuid (get-in ctx [:request :path-params :recipe-id]))]
+               (assoc ctx :q-data {:query '[:find (pull ?e pattern)
+                                            :in $ ?recipe-id pattern
+                                            :where [?e :recipe/recipe-id ?recipe-id]]
+                                   :args [db recipe-id recipe-pattern]})))
+    :leave (fn [ctx]
+             (let [q-result (get ctx :q-result)
+                   recipe-id (-> ctx :q-data :args (second))]
+               (if (seq q-result)
+                 (assoc ctx :response (rr/response (-> q-result (first) (query-result->recipe))))
+                 (assoc ctx :response (rr/bad-request {:type "recipe-not-found"
+                                                       :message "Recipe not found"
+                                                       :data (str "recipe-id" recipe-id)})))))}))
 
 (def retrieve-recipe
   [interceptors/db-interceptor
    http/transit-body
-   retrieve-recipe-response])
+   find-recipe-by-id-interceptor
+   interceptors/query-interceptor])
 
 (defn- update-recipe-response
   [request]
-  (let [account-id (get-in request [:headers "authorization"])
-        recipe-id (parse-uuid (get-in request [:path-params :recipe-id]))
-        {:keys [name public prep-time img]} (get-in request [:transit-params])
-        conn (get-in request [:system/database :conn])]
-    (d/transact conn {:tx-data [{:recipe/recipe-id recipe-id
-                                 :recipe/display-name name
-                                 :recipe/public? public
-                                 :recipe/prep-time prep-time
-                                 :recipe/image-url img
-                                 :recipe/owner [:account/account-id account-id]}]})
-    (rr/status 204)))
+  (rr/status 204))
 
 (def update-recipe
   [(bp/body-params)
+   recipe-interceptor
+   interceptors/transact-interceptor
    update-recipe-response])
 
-(defn- delete-recipe-response
-  [request]
-  (let [recipe-id (parse-uuid (get-in request [:path-params :recipe-id]))
-        conn (get-in request [:system/database :conn])]
-    (d/transact conn {:tx-data [[:db/retractEntity [:recipe/recipe-id recipe-id]]]})
-    (rr/status 204)))
+(def retract-recipe-interceptor
+  (interceptor/interceptor
+   {:name ::retract-recipe-interceptor
+    :enter (fn [ctx]
+             (let [recipe-id (parse-uuid (get-in ctx [:request :path-params :recipe-id]))]
+               (assoc ctx :tx-data [[:db/retractEntity [:recipe/recipe-id recipe-id]]])))
+    :leave (fn [ctx]
+             (assoc ctx :response (rr/status 204)))}))
 
 (def delete-recipe
-  [delete-recipe-response])
+  [retract-recipe-interceptor
+   interceptors/transact-interceptor])
