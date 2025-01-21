@@ -6,6 +6,27 @@
    [io.pedestal.http.body-params :as bp]
    [ring.util.response :as rr]))
 
+(def recipe-pattern
+  [:recipe/recipe-id
+   :recipe/prep-time
+   :recipe/display-name
+   :recipe/image-url
+   :recipe/public?
+   :account/_favorite-recipes
+   {:recipe/owner
+    [:account/account-id
+     :account/display-name]}
+   {:recipe/steps
+    [:step/step-id
+     :step/description
+     :step/sort-order]}
+   {:recipe/ingredients
+    [:ingredient/ingredient-id
+     :ingredient/display-name
+     :ingredient/amount
+     :ingredient/measure
+     :ingredient/sort-order]}])
+
 (defn- query-result->recipe
   [[{:account/keys [_favorite-recipes] :as recipe}]]
   (-> recipe
@@ -16,25 +37,6 @@
   [request]
   (let [db (get-in request [:system/database :db])
         account-id (get-in request [:headers "authorization"])
-        recipe-pattern [:recipe/recipe-id
-                        :recipe/prep-time
-                        :recipe/display-name
-                        :recipe/image-url
-                        :recipe/public?
-                        :account/_favorite-recipes
-                        {:recipe/owner
-                         [:account/account-id
-                          :account/display-name]}
-                        {:recipe/steps
-                         [:step/step-id
-                          :step/description
-                          :step/sort-order]}
-                        {:recipe/ingredients
-                         [:ingredient/ingredient-id
-                          :ingredient/display-name
-                          :ingredient/amount
-                          :ingredient/measure
-                          :ingredient/sort-order]}]
         public-recipes (mapv query-result->recipe
                              (d/q '[:find (pull ?e pattern)
                                     :in $ pattern
@@ -84,3 +86,18 @@
 
 (def upsert-recipes
   [upsert-recipes-response])
+
+(defn- retrieve-recipe-response
+  [request]
+  (let [db (get-in request [:system/database :db])
+        recipe-id (parse-uuid (get-in request [:path-params :recipe-id]))]
+    (rr/response
+     (d/q '[:find (pull ?e pattern)
+            :in $ ?recipe-id pattern
+            :where [?e :recipe/recipe-id ?recipe-id]]
+          db recipe-id recipe-pattern))))
+
+(def retrieve-recipe
+  [interceptors/db-interceptor
+   http/transit-body
+   retrieve-recipe-response])

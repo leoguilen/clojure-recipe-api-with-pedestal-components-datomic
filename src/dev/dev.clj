@@ -59,6 +59,11 @@
                          :public true
                          :prep-time 30
                          :img "img"}))
+  
+  (pt/response-for
+   (-> cr/system :api-server :service ::http/service-fn)
+   :get "/recipes/091b6eb3-f103-4b29-a094-5606ff55ae50"
+   :headers {"Accept" "application/transit+json"})
 
   (pt/response-for
    (-> cr/system :api-server :service ::http/service-fn)
