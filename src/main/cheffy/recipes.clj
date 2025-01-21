@@ -111,3 +111,13 @@
 (def update-recipe
   [(bp/body-params)
    update-recipe-response])
+
+(defn- delete-recipe-response
+  [request]
+  (let [recipe-id (parse-uuid (get-in request [:path-params :recipe-id]))
+        conn (get-in request [:system/database :conn])]
+    (d/transact conn {:tx-data [[:db/retractEntity [:recipe/recipe-id recipe-id]]]})
+    (rr/status 204)))
+
+(def delete-recipe
+  [delete-recipe-response])

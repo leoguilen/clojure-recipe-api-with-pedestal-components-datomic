@@ -51,6 +51,11 @@
 
   (pt/response-for
    (-> cr/system :api-server :service ::http/service-fn)
+   :delete "/recipes/833adf91-df0e-47ab-96ad-6c7637835ead"
+   :headers {"Authorization" "auth|5fbf7db6271d5e0076903601"})
+
+  (pt/response-for
+   (-> cr/system :api-server :service ::http/service-fn)
    :put "/recipes/68f7d398-f225-4ab2-8e9f-a723f1654b4b"
    :headers {"Authorization" "auth|5fbf7db6271d5e0076903601"
              "Content-Type" "application/transit+json"}
@@ -72,7 +77,7 @@
 
   (pt/response-for
    (-> cr/system :api-server :service ::http/service-fn)
-   :get "/recipes/68f7d398-f225-4ab2-8e9f-a723f1654b4b"
+   :get "/recipes/833adf91-df0e-47ab-96ad-6c7637835ead"
    :headers {"Accept" "application/transit+json"})
 
   (pt/response-for
