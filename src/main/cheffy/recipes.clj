@@ -79,14 +79,6 @@
    http/transit-body
    create-recipe-response])
 
-(defn- upsert-recipes-response
-  [request]
-  {:status 200
-   :body "Upsert recipes"})
-
-(def upsert-recipes
-  [upsert-recipes-response])
-
 (defn- retrieve-recipe-response
   [request]
   (let [db (get-in request [:system/database :db])
@@ -101,3 +93,21 @@
   [interceptors/db-interceptor
    http/transit-body
    retrieve-recipe-response])
+
+(defn- update-recipe-response
+  [request]
+  (let [account-id (get-in request [:headers "authorization"])
+        recipe-id (parse-uuid (get-in request [:path-params :recipe-id]))
+        {:keys [name public prep-time img]} (get-in request [:transit-params])
+        conn (get-in request [:system/database :conn])]
+    (d/transact conn {:tx-data [{:recipe/recipe-id recipe-id
+                                 :recipe/display-name name
+                                 :recipe/public? public
+                                 :recipe/prep-time prep-time
+                                 :recipe/image-url img
+                                 :recipe/owner [:account/account-id account-id]}]})
+    (rr/status 204)))
+
+(def update-recipe
+  [(bp/body-params)
+   update-recipe-response])

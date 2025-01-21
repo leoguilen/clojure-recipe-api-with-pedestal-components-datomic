@@ -40,7 +40,6 @@
         reader (transit/reader in :json)]
     (transit/read reader)))
 
-
 (comment
   (-> cr/system :api-server :service :env)
 
@@ -52,17 +51,28 @@
 
   (pt/response-for
    (-> cr/system :api-server :service ::http/service-fn)
-   :post "/recipes"
+   :put "/recipes/68f7d398-f225-4ab2-8e9f-a723f1654b4b"
    :headers {"Authorization" "auth|5fbf7db6271d5e0076903601"
              "Content-Type" "application/transit+json"}
+   :body (transit-write {:name "new name"
+                         :public true
+                         :prep-time 45
+                         :img "new img"}))
+
+  (pt/response-for
+   (-> cr/system :api-server :service ::http/service-fn)
+   :post "/recipes"
+   :headers {"Authorization" "auth|5fbf7db6271d5e0076903601"
+             "Content-Type" "application/transit+json"
+             "Accept" "application/transit+json"}
    :body (transit-write {:name "name"
                          :public true
                          :prep-time 30
                          :img "img"}))
-  
+
   (pt/response-for
    (-> cr/system :api-server :service ::http/service-fn)
-   :get "/recipes/091b6eb3-f103-4b29-a094-5606ff55ae50"
+   :get "/recipes/68f7d398-f225-4ab2-8e9f-a723f1654b4b"
    :headers {"Accept" "application/transit+json"})
 
   (pt/response-for
