@@ -1,6 +1,7 @@
 (ns cheffy.routes 
   (:require
    [cheffy.recipes :as recipes]
+   [cheffy.recipes.steps :as steps]
    [io.pedestal.http :as http]
    [io.pedestal.http.route :as route]))
 
@@ -13,7 +14,11 @@
      ["/recipes" :post recipes/create-recipe :route-name :create-recipe]
      ["/recipes/:recipe-id" :get recipes/retrieve-recipe :route-name :retrieve-recipe]
      ["/recipes/:recipe-id" :put recipes/update-recipe :route-name :update-recipe]
-     ["/recipes/:recipe-id" :delete recipes/delete-recipe :route-name :delete-recipe]}))
+     ["/recipes/:recipe-id" :delete recipes/delete-recipe :route-name :delete-recipe]
+     ;; steps
+     ["/steps" :post steps/upsert-step :route-name :create-step]
+     ["/steps/:step-id" :put steps/upsert-step :route-name :update-step]
+     ["/steps/:step-id" :delete steps/delete-step :route-name :delete-step]}))
 
 (comment
   ;; Terse route spec

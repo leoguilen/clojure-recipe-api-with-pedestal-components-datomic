@@ -11,6 +11,8 @@
 
 (def ^:private recipe-id (atom nil))
 
+(def ^:private step-id (atom nil))
+
 (deftest recipe-tests
   (testing "List recipes"
     (testing "with auth --public and drafts"
@@ -63,6 +65,39 @@
                                                      :prep-time 30
                                                      :img "img"}))]
       (is (= 204 status))))
+
+  (testing "Create recipe step"
+    (let [{:keys [status body]} (-> (pt/response-for
+                                     service-fn
+                                     :post "/steps"
+                                     :headers {"Authorization" "auth|5fbf7db6271d5e0076903601"
+                                               "Content-Type" "application/transit+json"}
+                                     :body (ts/transit-write {:recipe-id @recipe-id
+                                                              :description "new step"
+                                                              :sort-order 1}))
+                                    (update :body ts/transit-read))]
+      (reset! step-id (:step-id body))
+      (is (= 201 status))))
+
+  (testing "Update recipe step"
+    (let [{:keys [status]} (pt/response-for
+                                 service-fn
+                                 :put (str "/steps/" @step-id)
+                                 :headers {"Authorization" "auth|5fbf7db6271d5e0076903601"
+                                           "Content-Type" "application/transit+json"}
+                                 :body (ts/transit-write {:recipe-id @recipe-id
+                                                          :step-id @step-id
+                                                          :description "update step"
+                                                          :sort-order 1}))]
+      (is (= 204 status))))
+  
+    (testing "Delete recipe step"
+      (let [{:keys [status]} (pt/response-for
+                                   service-fn
+                                   :delete (str "/steps/" @step-id)
+                                   :headers {"Authorization" "auth|5fbf7db6271d5e0076903601"
+                                             "Content-Type" "application/transit+json"})]
+        (is (= 204 status))))
 
   (testing "Delete recipe"
     (let [{:keys [status]} (pt/response-for
