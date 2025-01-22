@@ -27,7 +27,41 @@
   []
   (cr/reset))
 
+(defn calculate-secret-hash
+  [{:keys [client-id client-secret username]}]
+  (let [hmac-sha256-algorithm "HmacSHA256"
+        signing-key (javax.crypto.spec.SecretKeySpec. (.getBytes client-secret) hmac-sha256-algorithm)
+        mac (doto (javax.crypto.Mac/getInstance hmac-sha256-algorithm)
+              (.init signing-key)
+              (.update (.getBytes username)))
+        raw-hmac (.doFinal mac (.getBytes client-id))]
+    (.encodeToString (java.util.Base64/getEncoder) raw-hmac)))
+
 (comment
+
+  (:auth cr/system)
+
+  (calculate-secret-hash {:client-id "client_id"
+                          :client-secret "client_secret"
+                          :username "username"})
+
+  (require '[cognitect.aws.client.api :as aws])
+
+  (def cognito-idp (aws/client {:api :cognito-idp}))
+
+  (aws/ops cognito-idp)
+
+  (aws/doc cognito-idp :SignUp)
+
+  (aws/invoke cognito-idp
+              {:op :SignUp
+               :request {:ClientId "1448u1digq51ulcj6kc4hmhf20"
+                         :Username "cheffy@app.com"
+                         :Password "Cheffy25#"
+                         :SecretHash (calculate-secret-hash {:client-id "1448u1digq51ulcj6kc4hmhf20"
+                                                             :client-secret "1csq8o6dgf046ljt0jhcqihvv8ua336sob4kl20ev0majec6ojjr"
+                                                             :username "cheffy@app.com"})}})
+
   (-> cr/system :api-server :service :env)
 
   (-> (transit-write {:name "name"

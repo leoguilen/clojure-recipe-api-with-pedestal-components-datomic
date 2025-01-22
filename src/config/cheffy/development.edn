@@ -6,4 +6,7 @@
  :database {:server-type :datomic-local
             :system "api.learnpedestal.com"
             :storage-dir :mem
-            :db-name "development"}}
+            :db-name "development"}
+ :auth {:client-id "<idp-client-id>"
+        :client-secret "<id-client-secret>"
+        :user-pool-id "<aws-cognito-user-pool-id>"}}
