@@ -5,7 +5,8 @@
    [io.pedestal.http.route :as route]))
 
 ;; Table route spec
-(def routes
+(defn routes
+  []
   (route/expand-routes
    #{{:app-name :cheffy ::http/scheme :http ::http/host "localhost"}
      ["/recipes" :get recipes/list-recipes :route-name :list-recipes]
