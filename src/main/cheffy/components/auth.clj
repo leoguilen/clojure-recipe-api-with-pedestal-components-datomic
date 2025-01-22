@@ -3,7 +3,7 @@
     [com.stuartsierra.component :as component]
     [cognitect.aws.client.api :as aws]))
 
-(defn calculate-secret-hash
+(defn ^:private calculate-secret-hash
   [{:keys [client-id client-secret username]}]
   (let [hmac-sha256-algorithm "HmacSHA256"
         signing-key (javax.crypto.spec.SecretKeySpec. (.getBytes client-secret) hmac-sha256-algorithm)
@@ -12,6 +12,19 @@
               (.update (.getBytes username)))
         raw-hmac (.doFinal mac (.getBytes client-id))]
     (.encodeToString (java.util.Base64/getEncoder) raw-hmac)))
+
+(defn create-cognito-account
+  [{:keys [config cognito-idp]} {:keys [email password]}]
+  (let [client-id (:client-id config)
+        client-secret (:client-secret config)]
+    (aws/invoke cognito-idp
+                {:op :SignUp
+                 :request {:ClientId client-id
+                           :Username email
+                           :Password password
+                           :SecretHash (calculate-secret-hash {:client-id client-id
+                                                               :client-secret client-secret
+                                                               :username email})}})))
 
 (defrecord Auth [config cognito-idp]
   component/Lifecycle

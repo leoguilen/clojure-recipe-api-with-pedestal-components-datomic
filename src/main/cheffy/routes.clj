@@ -1,5 +1,6 @@
 (ns cheffy.routes 
   (:require
+   [cheffy.account :as account]
    [cheffy.conversations :as conversations]
    [cheffy.recipes :as recipes]
    [cheffy.recipes.ingredients :as ingredients]
@@ -10,7 +11,10 @@
 (defn routes
   []
   (route/expand-routes
-   #{["/recipes" :get recipes/list-recipes :route-name :list-recipes]
+   #{ ;; accounts
+     ["/accounts/sign-up" :post account/sign-up :route-name :sign-up]
+      ;; recipes
+     ["/recipes" :get recipes/list-recipes :route-name :list-recipes]
      ["/recipes" :post recipes/create-recipe :route-name :create-recipe]
      ["/recipes/:recipe-id" :get recipes/retrieve-recipe :route-name :retrieve-recipe]
      ["/recipes/:recipe-id" :put recipes/update-recipe :route-name :update-recipe]
