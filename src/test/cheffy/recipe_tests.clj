@@ -13,6 +13,8 @@
 
 (def ^:private step-id (atom nil))
 
+(def ^:private ingredient-id (atom nil))
+
 (deftest recipe-tests
   (testing "List recipes"
     (testing "with auth --public and drafts"
@@ -81,23 +83,59 @@
 
   (testing "Update recipe step"
     (let [{:keys [status]} (pt/response-for
+                            service-fn
+                            :put (str "/steps/" @step-id)
+                            :headers {"Authorization" "auth|5fbf7db6271d5e0076903601"
+                                      "Content-Type" "application/transit+json"}
+                            :body (ts/transit-write {:recipe-id @recipe-id
+                                                     :step-id @step-id
+                                                     :description "update step"
+                                                     :sort-order 1}))]
+      (is (= 204 status))))
+
+  (testing "Delete recipe step"
+    (let [{:keys [status]} (pt/response-for
+                            service-fn
+                            :delete (str "/steps/" @step-id)
+                            :headers {"Authorization" "auth|5fbf7db6271d5e0076903601"
+                                      "Content-Type" "application/transit+json"})]
+      (is (= 204 status))))
+
+  (testing "create-ingredient"
+    (let [{:keys [status body]} (-> (pt/response-for
+                                     service-fn
+                                     :post "/ingredients"
+                                     :headers {"Authorization" "auth|5fbf7db6271d5e0076903601"
+                                               "Content-Type" "application/transit+json"}
+                                     :body (ts/transit-write {:recipe-id @recipe-id
+                                                              :name "ingredient name"
+                                                              :amount 500
+                                                              :measure "something"
+                                                              :sort-order 1}))
+                                    (update :body ts/transit-read))]
+      (reset! ingredient-id (:ingredient-id body))
+      (is (= 201 status))))
+
+  (testing "update-ingredient"
+    (let [{:keys [status body]} (pt/response-for
                                  service-fn
-                                 :put (str "/steps/" @step-id)
+                                 :put (str "/ingredients/" @ingredient-id)
                                  :headers {"Authorization" "auth|5fbf7db6271d5e0076903601"
                                            "Content-Type" "application/transit+json"}
                                  :body (ts/transit-write {:recipe-id @recipe-id
-                                                          :step-id @step-id
-                                                          :description "update step"
+                                                          :name "updated name"
+                                                          :amount 500
+                                                          :measure "something"
                                                           :sort-order 1}))]
       (is (= 204 status))))
-  
-    (testing "Delete recipe step"
-      (let [{:keys [status]} (pt/response-for
-                                   service-fn
-                                   :delete (str "/steps/" @step-id)
-                                   :headers {"Authorization" "auth|5fbf7db6271d5e0076903601"
-                                             "Content-Type" "application/transit+json"})]
-        (is (= 204 status))))
+
+  (testing "delete-ingredient"
+    (let [{:keys [status body]} (pt/response-for
+                                 service-fn
+                                 :delete (str "/ingredients/" @ingredient-id)
+                                 :headers {"Authorization" "auth|5fbf7db6271d5e0076903601"
+                                           "Content-Type" "application/transit+json"})]
+      (is (= 204 status))))
 
   (testing "Delete recipe"
     (let [{:keys [status]} (pt/response-for
