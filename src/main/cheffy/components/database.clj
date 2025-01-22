@@ -4,7 +4,8 @@
    [clojure.java.io :as io]
    [com.stuartsierra.component :as component]
    [datomic.client.api :as d]
-   [datomic.local :as dl]))
+   [datomic.local :as dl]
+   [clojure.tools.logging :as log]))
 
 (defn iden-has-attr?
   [db ident attr]
@@ -22,6 +23,7 @@
  component/Lifecycle
   
   (start [component]
+    (log/info "Starting Database")
     (println ";; Starting Database")
     (let [db-name (select-keys config [:db-name])
           client (d/client (select-keys config [:server-type :storage-dir :system]))
@@ -31,6 +33,7 @@
       (assoc component :conn conn)))
 
   (stop [component]
+    (log/info "Stopping Database")
     (println ";; Stopping Database")
     (dl/release-db (select-keys config [:system :db-name :mem]))
     (assoc component :conn nil)))
