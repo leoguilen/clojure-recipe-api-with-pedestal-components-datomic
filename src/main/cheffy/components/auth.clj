@@ -1,7 +1,45 @@
 (ns cheffy.components.auth 
   (:require
-   [com.stuartsierra.component :as component]
-   [cognitect.aws.client.api :as aws]))
+   [clojure.data.json :as json]
+   [cognitect.aws.client.api :as aws]
+   [com.stuartsierra.component :as component]) 
+  (:import
+   [com.auth0.jwt JWT]
+   [com.auth0.jwt.algorithms Algorithm]))
+
+(defn validate-signature
+  [{:keys [key-provider]} token]
+  (let [algorithm (Algorithm/RSA256 key-provider)
+        verifier (.build (JWT/require algorithm))
+        verified-token (.verify verifier token)]
+    (.getPayload verified-token)))
+
+(defn decode-to-str
+  [s]
+  (String. (.decode (java.util.Base64/getUrlDecoder) s)))
+
+(defn decode-token
+ [token]
+  (-> token
+      (decode-to-str)
+      (json/read-str)))
+
+(defn verify-payload
+  [{:keys [config]} {:strs [client_id iss token_use] :as payload}]
+  (when-not
+   (and
+    (= (:client-id config) client_id)
+    (= (:jwks config) iss)
+    (contains? #{"access" "id"} token_use))
+    (throw (ex-info "Token verification failed" {})))
+  payload)
+
+(defn verify-and-get-payload
+  [auth token]
+  (->> token
+       (validate-signature auth)
+       (decode-token)
+       (verify-payload auth)))
 
 (defn ^:private calculate-secret-hash
   [{:keys [client-id client-secret username]}]
@@ -13,7 +51,7 @@
         raw-hmac (.doFinal mac (.getBytes client-id))]
     (.encodeToString (java.util.Base64/getEncoder) raw-hmac)))
 
-(defn when-anomaly-throw
+(defn ^:private when-anomaly-throw
   [result]
   (when (contains? result :cognitect.anomalies/category)
     (throw (ex-info (:__type result) result))))
@@ -66,16 +104,27 @@
     (when-anomaly-throw result)
     (:AuthenticationResult result)))
 
-(defrecord Auth [config cognito-idp]
+(defrecord Auth [config cognito-idp key-provider]
   component/Lifecycle
-  
+
   (start [component]
     (println ";; Starting Auth")
-    (assoc component :cognito-idp (aws/client {:api :cognito-idp})))
-  
+    (let [key-provider (-> (:jwks config)
+                           (com.auth0.jwk.UrlJwkProvider.)
+                           (com.auth0.jwk.GuavaCachedJwkProvider.))]
+      (assoc component
+             :cognito-idp (aws/client {:api :cognito-idp})
+             :key-provider (reify com.auth0.jwt.interfaces.RSAKeyProvider
+                             (getPublicKeyById [_ kid]
+                               (.getPublicKey (.get key-provider kid)))
+                             (getPrivateKey [_] nil)
+                             (getPrivateKeyId [_] nil)))))
+
   (stop [component]
     (println ";; Stopping Auth")
-    (assoc component :cognito-idp nil)))
+    (assoc component
+           :cognito-idp nil
+           :key-provider nil)))
 
 (defn service
   [config]

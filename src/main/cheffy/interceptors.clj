@@ -1,6 +1,9 @@
 (ns cheffy.interceptors
-  (:require [datomic.client.api :as d]
-            [io.pedestal.interceptor :as interceptor]))
+  (:require
+   [cheffy.components.auth :as auth]
+   [clojure.string :as string]
+   [datomic.client.api :as d]
+   [io.pedestal.interceptor :as interceptor]))
 
 (def db-interceptor
   (interceptor/interceptor
@@ -24,3 +27,17 @@
     :enter (fn [ctx]
              (let [q-data (get ctx :q-data)]
                (assoc ctx :q-result (d/q q-data))))}))
+
+(defn- get-token
+  [ctx]
+  (-> ctx
+      (get-in [:request :headers "Authorization"])
+      (string/split #" ")
+      (second)))
+
+(def verify-json-web-token
+  (interceptor/interceptor
+   {:name ::verify-json-web-token
+    :enter (fn [{:keys [request] :as ctx}]
+             (let [claims (auth/verify-and-get-payload (:system/auth request) (get-token ctx))]
+               (assoc-in ctx [:request :claims] claims)))}))

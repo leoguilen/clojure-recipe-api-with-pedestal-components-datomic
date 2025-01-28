@@ -38,7 +38,7 @@
                                [(last default-interceptors)]))]
     (assoc service-map ::http/interceptors interceptors)))
 
-(defrecord ApiServer [service-map service database]
+(defrecord ApiServer [service-map service database auth]
   
   component/Lifecycle
   
@@ -46,7 +46,7 @@
     (println ";; Starting API server")
     (let [service (-> service-map
                       (cheffy-routes)
-                      (cheffy-interceptors [(inject-system {:system/database database})])
+                      (cheffy-interceptors [(inject-system {:system/database database :system/auth auth})])
                       (create-cheffy-server)
                       (http/start))]
       (assoc component :service service)))
