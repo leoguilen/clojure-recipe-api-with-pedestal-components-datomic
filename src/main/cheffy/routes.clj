@@ -13,6 +13,8 @@
   (route/expand-routes
    #{ ;; accounts
      ["/accounts/sign-up" :post account/sign-up :route-name :sign-up]
+     ["/accounts/confirm" :post account/confirm :route-name :confirm]
+     ["/accounts/log-in" :post account/log-in :route-name :log-in]
       ;; recipes
      ["/recipes" :get recipes/list-recipes :route-name :list-recipes]
      ["/recipes" :post recipes/create-recipe :route-name :create-recipe]

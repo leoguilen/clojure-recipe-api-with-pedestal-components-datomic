@@ -1,11 +1,9 @@
-(ns cheffy.account 
+(ns cheffy.account
   (:require
    [cheffy.components.auth :as auth]
-   [cheffy.interceptors :as interceptors]
    [io.pedestal.http :as http]
    [io.pedestal.http.body-params :as bp]
    [io.pedestal.interceptor :as interceptor]
-   [io.pedestal.interceptor.chain :as chain]
    [ring.util.response :as rr]))
 
 (def sign-up-interceptor
@@ -14,18 +12,41 @@
     :enter (fn [{:keys [request] :as ctx}]
              (let [create-cognito-account (auth/create-cognito-account
                                            (:system/auth request)
-                                           (:transit-params request))
-                   email (get-in request [:transit-params :email])]
-               (if-not (contains? create-cognito-account :cognitect.anomalies/category)
-                 (-> ctx
-                     (chain/enqueue interceptors/transact-interceptor)
-                     (assoc :tx-data [{:account/account-id (:UserSub create-cognito-account)
-                                       :account/display-name email}]))
-                 (assoc ctx :response (rr/bad-request {:type (:__type create-cognito-account)
-                                                       :message (:message create-cognito-account)
-                                                       :data {:account-id email}})))))}))
+                                           (:transit-params request))]
+               (assoc ctx :tx-data create-cognito-account)))
+    :leave (fn [ctx]
+             (let [account-id (-> ctx :tx-data (first) :account/account-id)]
+               (assoc ctx :response (rr/response {:account-id account-id}))))}))
 
 (def sign-up
   [http/transit-body
    (bp/body-params)
    sign-up-interceptor])
+
+(def confirm-account-interceptor
+  (interceptor/interceptor
+   {:name ::confirm-account-interceptor
+    :enter (fn [{:keys [request] :as ctx}]
+             (auth/confirm-cognito-account
+              (:system/auth request)
+              (:transit-params request))
+             ctx)
+    :leave (fn [ctx]
+             (assoc ctx :response (rr/response {:message "Account confirmed"})))}))
+
+(def confirm
+  [[http/transit-body]
+   (bp/body-params)
+   confirm-account-interceptor])
+
+(defn- log-in-response
+  [request]
+  (let [cognito-log-in (auth/cognito-log-in
+                        (:system/auth request)
+                        (:transit-params request))]
+    (rr/response cognito-log-in)))
+
+(def log-in
+  [http/transit-body
+   (bp/body-params)
+   log-in-response])
