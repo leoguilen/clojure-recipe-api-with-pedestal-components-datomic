@@ -1,20 +1,22 @@
-(ns cheffy.routes 
-  (:require
-   [cheffy.account :as account]
-   [cheffy.conversations :as conversations]
-   [cheffy.recipes :as recipes]
-   [cheffy.recipes.ingredients :as ingredients]
-   [cheffy.recipes.steps :as steps]
-   [io.pedestal.http.route :as route]))
+(ns cheffy.routes
+  (:require [io.pedestal.http.route :as route]
+            [cheffy.recipes :as recipes]
+            [cheffy.recipes.steps :as steps]
+            [cheffy.recipes.ingredients :as ingredients]
+            [cheffy.conversations :as conversations]
+            [cheffy.account :as account]))
 
-;; Table route spec
+
 (defn routes
   []
   (route/expand-routes
-   #{ ;; accounts
-     ["/accounts/sign-up" :post account/sign-up :route-name :sign-up]
-     ["/accounts/confirm" :post account/confirm :route-name :confirm]
-     ["/accounts/log-in" :post account/log-in :route-name :log-in]
+   #{;; account
+     ["/account/sign-up" :post account/sign-up :route-name :sign-up]
+     ["/account/confirm" :post account/confirm :route-name :confirm]
+     ["/account/log-in" :post account/log-in :route-name :log-in]
+     ["/account/refresh" :post account/refresh-token :route-name :refresh-token]
+     ["/account" :put account/update-role :route-name :update-role]
+     ["/account" :delete account/delete-account :route-name :delete-role]
       ;; recipes
      ["/recipes" :get recipes/list-recipes :route-name :list-recipes]
      ["/recipes" :post recipes/create-recipe :route-name :create-recipe]

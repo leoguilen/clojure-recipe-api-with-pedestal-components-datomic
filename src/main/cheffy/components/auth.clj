@@ -1,11 +1,14 @@
-(ns cheffy.components.auth 
-  (:require
-   [clojure.data.json :as json]
-   [cognitect.aws.client.api :as aws]
-   [com.stuartsierra.component :as component]) 
-  (:import
-   [com.auth0.jwt JWT]
-   [com.auth0.jwt.algorithms Algorithm]))
+(ns cheffy.components.auth
+  (:require [com.stuartsierra.component :as component]
+            [cognitect.aws.client.api :as aws]
+            [clojure.data.json :as json])
+  (:import (javax.crypto.spec SecretKeySpec)
+           (javax.crypto Mac)
+           (java.util Base64)
+           (com.auth0.jwk UrlJwkProvider GuavaCachedJwkProvider)
+           (com.auth0.jwt.interfaces RSAKeyProvider)
+           (com.auth0.jwt.algorithms Algorithm)
+           (com.auth0.jwt JWT)))
 
 (defn validate-signature
   [{:keys [key-provider]} token]
@@ -16,10 +19,10 @@
 
 (defn decode-to-str
   [s]
-  (String. (.decode (java.util.Base64/getUrlDecoder) s)))
+  (String. (.decode (Base64/getUrlDecoder) s)))
 
 (defn decode-token
- [token]
+  [token]
   (-> token
       (decode-to-str)
       (json/read-str)))
@@ -41,17 +44,17 @@
        (decode-token)
        (verify-payload auth)))
 
-(defn ^:private calculate-secret-hash
+(defn calculate-secret-hash
   [{:keys [client-id client-secret username]}]
   (let [hmac-sha256-algorithm "HmacSHA256"
-        signing-key (javax.crypto.spec.SecretKeySpec. (.getBytes client-secret) hmac-sha256-algorithm)
-        mac (doto (javax.crypto.Mac/getInstance hmac-sha256-algorithm)
+        signing-key (SecretKeySpec. (.getBytes client-secret) hmac-sha256-algorithm)
+        mac (doto (Mac/getInstance hmac-sha256-algorithm)
               (.init signing-key)
               (.update (.getBytes username)))
         raw-hmac (.doFinal mac (.getBytes client-id))]
-    (.encodeToString (java.util.Base64/getEncoder) raw-hmac)))
+    (.encodeToString (Base64/getEncoder) raw-hmac)))
 
-(defn ^:private when-anomaly-throw
+(defn when-anomaly-throw
   [result]
   (when (contains? result :cognitect.anomalies/category)
     (throw (ex-info (:__type result) result))))
@@ -62,12 +65,14 @@
         client-secret (:client-secret config)
         result (aws/invoke cognito-idp
                            {:op :SignUp
-                            :request {:ClientId client-id
-                                      :Username email
-                                      :Password password
-                                      :SecretHash (calculate-secret-hash {:client-id client-id
-                                                                          :client-secret client-secret
-                                                                          :username email})}})]
+                            :request
+                            {:ClientId client-id
+                             :Username email
+                             :Password password
+                             :SecretHash (calculate-secret-hash
+                                          {:client-id client-id
+                                           :client-secret client-secret
+                                           :username email})}})]
     (when-anomaly-throw result)
     [{:account/account-id (:UserSub result)
       :account/display-name email}]))
@@ -78,12 +83,14 @@
         client-secret (:client-secret config)
         result (aws/invoke cognito-idp
                            {:op :ConfirmSignUp
-                            :request {:ClientId client-id
-                                      :Username email
-                                      :ConfirmationCode confirmation-code
-                                      :SecretHash (calculate-secret-hash {:client-id client-id
-                                                                          :client-secret client-secret
-                                                                          :username email})}})]
+                            :request
+                            {:ClientId client-id
+                             :Username email
+                             :ConfirmationCode confirmation-code
+                             :SecretHash (calculate-secret-hash
+                                          {:client-id client-id
+                                           :client-secret client-secret
+                                           :username email})}})]
     (when-anomaly-throw result)))
 
 (defn cognito-log-in
@@ -93,32 +100,91 @@
         user-pool-id (:user-pool-id config)
         result (aws/invoke cognito-idp
                            {:op :AdminInitiateAuth
-                            :request {:ClientId client-id
-                                      :UserPoolId user-pool-id
-                                      :AuthFlow "ADMIN_USER_PASSWORD_AUTH"
-                                      :AuthParameters {"USERNAME" email
-                                                       "PASSWORD" password
-                                                       "SECRET_HASH" (calculate-secret-hash {:client-id client-id
-                                                                                             :client-secret client-secret
-                                                                                             :username email})}}})]
+                            :request
+                            {:ClientId client-id
+                             :UserPoolId user-pool-id
+                             :AuthFlow "ADMIN_USER_PASSWORD_AUTH"
+                             :AuthParameters {"USERNAME" email
+                                              "PASSWORD" password
+                                              "SECRET_HASH" (calculate-secret-hash
+                                                             {:client-id client-id
+                                                              :client-secret client-secret
+                                                              :username email})}}})]
     (when-anomaly-throw result)
     (:AuthenticationResult result)))
 
+
+(defn cognito-refresh-token
+  [{:keys [config cognito-idp]} {:keys [refresh-token sub]}]
+  (let [client-id (:client-id config)
+        client-secret (:client-secret config)
+        user-pool-id (:user-pool-id config)
+        result (aws/invoke cognito-idp
+                           {:op :AdminInitiateAuth
+                            :request
+                            {:ClientId client-id
+                             :UserPoolId user-pool-id
+                             :AuthFlow "REFRESH_TOKEN_AUTH"
+                             :AuthParameters {"REFRESH_TOKEN" refresh-token
+                                              "SECRET_HASH" (calculate-secret-hash
+                                                             {:client-id client-id
+                                                              :client-secret client-secret
+                                                              :username sub})}}})]
+    (when-anomaly-throw result)
+    (:AuthenticationResult result)))
+
+
+(defn cognito-update-role
+  [{:keys [cognito-idp config]} claims]
+  (let [client-id (:client-id config)
+        client-secret (:client-secret config)
+        user-pool-id (:user-pool-id config)
+        {:strs [sub]} claims
+        result (aws/invoke cognito-idp
+                           {:op :AdminAddUserToGroup
+                            :request
+                            {:ClientId client-id
+                             :UserPoolId user-pool-id
+                             :Username sub
+                             :GroupName "cheffs"
+                             :SecretHash (calculate-secret-hash
+                                          {:client-id client-id
+                                           :client-secret client-secret
+                                           :username sub})}})]
+    (when-anomaly-throw result)
+    result))
+
+(defn cognito-delete-user
+  [{:keys [cognito-idp config]} claims]
+  (let [user-pool-id (:user-pool-id config)
+        {:strs [sub]} claims
+        result (aws/invoke cognito-idp
+                           {:op :AdminDeleteUser
+                            :request
+                            {:UserPoolId user-pool-id
+                             :Username sub}})]
+    (when-anomaly-throw result)))
+
 (defrecord Auth [config cognito-idp key-provider]
+
   component/Lifecycle
 
   (start [component]
     (println ";; Starting Auth")
     (let [key-provider (-> (:jwks config)
-                           (com.auth0.jwk.UrlJwkProvider.)
-                           (com.auth0.jwk.GuavaCachedJwkProvider.))]
+                           (UrlJwkProvider.)
+                           (GuavaCachedJwkProvider.))]
       (assoc component
              :cognito-idp (aws/client {:api :cognito-idp})
-             :key-provider (reify com.auth0.jwt.interfaces.RSAKeyProvider
+             :key-provider (reify RSAKeyProvider
                              (getPublicKeyById [_ kid]
                                (.getPublicKey (.get key-provider kid)))
-                             (getPrivateKey [_] nil)
-                             (getPrivateKeyId [_] nil)))))
+
+                             (getPrivateKey [_]
+                               nil)
+
+                             (getPrivateKeyId [_]
+                               nil)))))
 
   (stop [component]
     (println ";; Stopping Auth")

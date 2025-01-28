@@ -1,5 +1,6 @@
 (ns cheffy.test-system
-  (:require [cognitect.transit :as transit])
+  (:require [clojure.test :refer :all]
+            [cognitect.transit :as transit])
   (:import (java.io ByteArrayOutputStream ByteArrayInputStream)))
 
 (defn transit-write [obj]

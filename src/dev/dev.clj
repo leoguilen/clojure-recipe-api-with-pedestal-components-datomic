@@ -61,6 +61,16 @@
                          :SecretHash (calculate-secret-hash {:client-id "1448u1digq51ulcj6kc4hmhf20"
                                                              :client-secret "1csq8o6dgf046ljt0jhcqihvv8ua336sob4kl20ev0majec6ojjr"
                                                              :username "cheffy@app.com"})}})
+    (aws/invoke cognito-idp
+              {:op :AdminInitiateAuth
+               :request {:ClientId "1448u1digq51ulcj6kc4hmhf20"
+                         :UserPoolId "us-west-2_rR5LUUlMx"
+                         :AuthFlow "ADMIN_USER_PASSWORD_AUTH"
+                         :AuthParameters {"USERNAME" "cheffy@app.com"
+                                          "PASSWORD" "Cheffy25#"
+                                          "SECRET_HASH" (calculate-secret-hash {:client-id "1448u1digq51ulcj6kc4hmhf20"
+                                                                                :client-secret "1csq8o6dgf046ljt0jhcqihvv8ua336sob4kl20ev0majec6ojjr"
+                                                                                :username "cheffy@app.com"})}}})
 
   (-> cr/system :api-server :service :env)
 

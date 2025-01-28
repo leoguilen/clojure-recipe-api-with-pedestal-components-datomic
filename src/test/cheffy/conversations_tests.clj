@@ -1,5 +1,5 @@
-(ns cheffy.conversation-tests
-  (:require [clojure.test :refer [deftest is testing]]
+(ns cheffy.conversations-tests
+  (:require [clojure.test :refer :all]
             [io.pedestal.test :as pt]
             [io.pedestal.http :as http]
             [cheffy.test-system :as ts]

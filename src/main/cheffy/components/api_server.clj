@@ -1,33 +1,21 @@
-(ns cheffy.components.api-server 
-  (:require
-   [cheffy.routes :as routes]
-   [com.stuartsierra.component :as component]
-   [io.pedestal.http :as http]
-   [io.pedestal.interceptor :as interceptor]))
+(ns cheffy.components.api-server
+  (:require [com.stuartsierra.component :as component]
+            [io.pedestal.http :as http]
+            [cheffy.routes :as routes]
+            [io.pedestal.interceptor :as interceptor]))
 
-(defn- dev?
-  [service-map]
-  (= :dev (:env service-map)))
-
-(defn cheffy-routes
-  [service-map]
-  (let [routes (if (dev? service-map)
-                 #(routes/routes)
-                 (routes/routes))]
-    (assoc service-map ::http/routes routes)))
-
-(defn- inject-system
+(defn inject-system
   [system]
   (interceptor/interceptor
    {:name ::inject-system
-    :enter (fn [ctx] (update-in ctx [:request] merge system))}))
+    :enter (fn [ctx]
+             (update-in ctx [:request] merge system))}))
 
-(defn- create-cheffy-server [service-map]
-  (http/create-server (if (dev? service-map)
-                        (http/dev-interceptors service-map)
-                        (service-map))))
+(defn create-cheffy-server
+  [service-map]
+  (http/create-server (http/dev-interceptors service-map)))
 
-(defn- cheffy-interceptors
+(defn cheffy-interceptors
   [service-map sys-interceptors]
   (let [default-interceptors (-> service-map
                                  (http/default-interceptors)
@@ -39,18 +27,18 @@
     (assoc service-map ::http/interceptors interceptors)))
 
 (defrecord ApiServer [service-map service database auth]
-  
+
   component/Lifecycle
-  
+
   (start [component]
-    (println ";; Starting API server")
+    (println ";; Stating API Server")
     (let [service (-> service-map
-                      (cheffy-routes)
+                      (assoc ::http/routes #(routes/routes))
                       (cheffy-interceptors [(inject-system {:system/database database :system/auth auth})])
                       (create-cheffy-server)
                       (http/start))]
       (assoc component :service service)))
-  
+
   (stop [component]
     (println ";; Stopping API server")
     (when service

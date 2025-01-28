@@ -1,10 +1,9 @@
 (ns cheffy.server
-  (:require
-   [cheffy.components.api-server :as api-server]
-   [cheffy.components.auth :as auth]
-   [cheffy.components.database :as database]
-   [clojure.edn :as edn]
-   [com.stuartsierra.component :as component]))
+  (:require [com.stuartsierra.component :as component]
+            [clojure.edn :as edn]
+            [cheffy.components.api-server :as api-server]
+            [cheffy.components.database :as database]
+            [cheffy.components.auth :as auth]))
 
 (defn create-system
   [config]

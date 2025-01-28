@@ -91,7 +91,7 @@
 
 (def find-recipe-by-id-interceptor
   (interceptor/interceptor
-   {:name ::find-recipe-by-id-interceptor
+   {:name :find-recipe-by-id-interceptor
     :enter (fn [ctx]
              (let [db (get-in ctx [:request :system/database :db])
                    recipe-id (parse-uuid (get-in ctx [:request :path-params :recipe-id]))]
